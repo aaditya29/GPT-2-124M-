@@ -66,3 +66,17 @@ class LayerNormalisation(nn.Module):
         std = x.std(dim=-1, keepdim=True)
         # Normalize and scaling
         return self.alpha * (x - mean) / (std + self.eps) + self.bias
+
+
+class FeedForward(nn.Module):
+
+    def __init__(self, d_model: int, d_ff: int, dropout: float) -> None:
+        super().__init__()  # Initialize the parent class
+        self.linear1 = nn.Linear(d_model, d_ff)  # First linear layer
+        self.linear2 = nn.Linear(d_ff, d_model)  # Second linear layer
+        self.dropout = nn.Dropout(dropout)  # Dropout layer
+        self.relu = nn.ReLU()  # ReLU activation function
+
+    def forward(self, x):
+        # (batch, seq_len, d_model) --> (batch, seq_len, d_ff) --> (batch, seq_len, d_model)
+        return self.linear_2(self.dropout(torch.relu(self.linear_1(x))))
