@@ -49,3 +49,20 @@ class PositionalEncoding(nn.Module):
         x = x + (self.pe[:, :x.shape[1], :]).requires_grad_(False)
         # Apply dropout to the sum of embeddings and positional encodings
         return self.dropout(x)
+
+
+class LayerNormalisation(nn.Module):
+
+    # where eps is epsilon a small value to avoid division by zero
+    def __init__(self, eps: float = 1e-6) -> None:
+        super().__init__()  # Initialize the parent class
+        self.eps = eps  # Epsilon value to avoid division by zero
+        self.alpha = nn.Parameter(torch.ones(1))  # Scale parameter
+        self.bias = nn.Parameter(torch.zeros(1))  # Shift parameter
+
+    def forward(self, x):
+        mean = x.mean(dim=-1, keepdim=True)  # Mean of the last dimension
+        # Standard deviation of the last dimension
+        std = x.std(dim=-1, keepdim=True)
+        # Normalize and scaling
+        return self.alpha * (x - mean) / (std + self.eps) + self.bias
