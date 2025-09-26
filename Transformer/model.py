@@ -80,3 +80,29 @@ class FeedForward(nn.Module):
     def forward(self, x):
         # (batch, seq_len, d_model) --> (batch, seq_len, d_ff) --> (batch, seq_len, d_model)
         return self.linear_2(self.dropout(torch.relu(self.linear_1(x))))
+
+
+class MultiHeadAttentionBlock(nn.Module):
+
+    """
+    d_model: Dimension of the model
+    h: Number of heads
+    dropout: Dropout rate
+    """
+
+    def __init__(self, d_model: int, h: int, dropout: float) -> None:
+        super().__init__()  # Initialize the parent class
+        self.d_model = d_model  # Dimension of the model
+        self.h = h  # Number of heads
+        # d_model must be divisible by h because we will split the d_model into h heads
+        assert d_model % h == 0, "d_model must be divisible by h"
+        self.d_k = d_model // h  # Dimension of each head
+        # Linear layer for query
+        self.w_q = nn.Linear(d_model, d_model, bias=False)
+        # Linear layer for key
+        self.w_k = nn.Linear(d_model, d_model, bias=False)
+        # Linear layer for value
+        self.w_v = nn.Linear(d_model, d_model, bias=False)
+        # Linear layer for output
+        self.w_o = nn.Linear(d_model, d_model, bias=False)
+        self.dropout = nn.Dropout(dropout)  # Dropout layer
