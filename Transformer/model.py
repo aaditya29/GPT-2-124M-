@@ -83,7 +83,6 @@ class FeedForward(nn.Module):
 
 
 class MultiHeadAttentionBlock(nn.Module):
-
     """
     d_model: Dimension of the model
     h: Number of heads
@@ -106,3 +105,39 @@ class MultiHeadAttentionBlock(nn.Module):
         # Linear layer for output
         self.w_o = nn.Linear(d_model, d_model, bias=False)
         self.dropout = nn.Dropout(dropout)  # Dropout layer
+
+    @staticmethod  # Compute scaled dot-product attention
+    def attention(query, key, value, mask=None, dropout=None):
+        d_k = query.size(-1)  # last value of query key and value is d_k
+        # (batch, h, seq_len, d_k) x (batch, h, d_k, seq_len) --> (batch, h, seq_len, seq_len)
+
+        # applying first par of the attention formula
+        attention_scores = torch.matmul(
+            query, key.transpose(-2, -1)) / math.sqrt(d_k)
+        if mask is not None:
+            attention_scores = attention_scores.masked_fill(
+                mask == 0, -1e9)  # Mask out the padding tokens
+        # Apply softmax to get attention weights
+        attention_scores = torch.softmax(attention_scores, dim=-1)
+        if dropout is not None:
+            attention_scores = dropout(attention_scores)  # Apply dropout
+
+        # (batch, h, seq_len, d_k)
+        return torch.matmul(attention_scores, value), attention_scores
+
+    def forward(self, q, k, v, mask):
+        # (batch, seq_len, d_model)-> (batch, seq_len, d_model)
+        query = self.w_q(q)
+        # (batch, seq_len, d_model)-> (batch, seq_len, d_model)
+        key = self.w_k(k)
+        # (batch, seq_len, d_model)-> (batch, seq_len, d_model)
+        value = self.w_v(v)
+
+        # splitting the d_model into h heads
+        # (batch, seq_len, d_model) --> (batch, seq_len, h, d_k) --> (batch, h, seq_len, d_k)
+        query = query.view(
+            query.shape[0], query.shape[1], self.h, self.d_k).transpose(1, 2)
+        key = key.view(key.shape[0], key.shape[1],
+                       self.h, self.d_k).transpose(1, 2)
+        value = value.view(
+            value.shape[0], value.shape[1], self.h, self.d_k).transpose(1, 2)
