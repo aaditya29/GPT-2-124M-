@@ -223,3 +223,30 @@ class DecoderBlock(nn.Module):
         x = self.residual_connections[2](
             x, self.feed_forward_block)  # Feed-forward sub-layer
         return x
+
+
+class Decoder(nn.Module):
+
+    def __init__(self, features: int, layers: nn.ModuleList) -> None:
+        super().__init__()
+        self.layers = layers  # List of decoder blocks
+        self.norm = LayerNormalization(features)  # Final layer normalization
+
+    def forward(self, x, encoder_output, src_mask, tgt_mask):
+        for layer in self.layers:
+            # Pass the output of the previous block as input to the next block
+            x = layer(x, encoder_output, src_mask, tgt_mask)
+        return self.norm(x)  # Apply final layer normalization
+
+
+# building projection layer for projecting the embedding into vocabulary
+class ProjectionLayer(nn.Module):
+
+    def __init__(self, d_model, vocab_size) -> None:
+        super().__init__()
+        # Linear layer to project the d_model to vocab_size
+        self.proj = nn.Linear(d_model, vocab_size)
+
+    def forward(self, x) -> None:
+        # (batch, seq_len, d_model) --> (batch, seq_len, vocab_size)
+        return self.proj(x)
