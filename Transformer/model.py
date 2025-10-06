@@ -250,3 +250,17 @@ class ProjectionLayer(nn.Module):
     def forward(self, x) -> None:
         # (batch, seq_len, d_model) --> (batch, seq_len, vocab_size)
         return self.proj(x)
+
+
+class Transformer(nn.Module):
+
+    # (encoder, decoder, src_embed, tgt_embed, src_pos, tgt_pos, projection_layer)
+    def __init__(self, encoder: Encoder, decoder: Decoder, src_embed: InputEmbeddings, tgt_embed: InputEmbeddings, src_pos: PositionalEncoding, tgt_pos: PositionalEncoding, projection_layer: ProjectionLayer) -> None:
+        super().__init__()  # Initialize the parent class
+        self.encoder = encoder  # Encoder
+        self.decoder = decoder  # Decoder
+        self.src_embed = src_embed  # Source embeddings
+        self.tgt_embed = tgt_embed  # Target embeddings
+        self.src_pos = src_pos
+        self.tgt_pos = tgt_pos  # Positional encodings
+        self.projection_layer = projection_layer  # Projection layer
