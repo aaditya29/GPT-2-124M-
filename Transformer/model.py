@@ -264,3 +264,18 @@ class Transformer(nn.Module):
         self.src_pos = src_pos
         self.tgt_pos = tgt_pos  # Positional encodings
         self.projection_layer = projection_layer  # Projection layer
+
+    def encode(self, src, src_mask):
+        # (batch, seq_len, d_model)
+        src = self.src_embed(src)  # Apply source embeddings
+        src = self.src_pos(src)  # Add positional encodings
+        return self.encoder(src, src_mask)  # Pass through the encoder
+
+    def decode(self, encoder_output: torch.Tensor, src_mask: torch.Tensor, tgt: torch.Tensor, tgt_mask: torch.Tensor):
+        tgt = self.tgt_embed(tgt)  # Apply target embeddings
+        tgt = self.tgt_pos(tgt)  # Add positional encodings
+        return self.decoder(tgt, encoder_output, src_mask, tgt_mask)
+
+    def project(self, x):
+        # Project the decoder output to vocabulary size
+        return self.projection_layer(x)
