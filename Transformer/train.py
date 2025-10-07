@@ -7,3 +7,26 @@ from tokenizers.models import WordLevel  # for word-level tokenization
 # for training word-level tokenizer
 from tokenizers.trainers import WordLevelTrainer
 from tokenizers.pre_tokenizers import Whitespace  # for whitespace tokenization
+
+from pathlib import Path
+
+
+def get_all_sentences(ds, lang):
+    for item in ds:  # iterate through all items in dataset
+        yield item[lang]
+
+
+def get_or_build_tokenizer(config, ds, lang):
+    # Path to save/load tokenizer
+    tokenizer_path = Path(config['tokenizer_file'].format(lang))
+    if not Path.exists(tokenizer_path):  # if path does not exist then build tokenizer
+        print(f"Building {lang} tokenizer...")
+        # initialize word-level tokenizer and set unk token for unknown words
+        tokenizer = Tokenizer(WordLevel(unk_token="[UNK]"))
+        tokenizer.pre_tokenizer = Whitespace()  # set pre-tokenizer to whitespace
+        # splitting words by whitespace and special tokens called UNK, PAD, SOS, EOS which are unknown, padding, start of sentence and end of sentence tokens respectively
+        trainer = WordLevelTrainer(
+            special_tokens=["[UNK]", "[PAD]", "[SOS]", "[EOS]"], min_frequency=2)
+        tokenizer.train_from_iterator(
+            get_all_sentences(ds, lang), trainer=trainer)
+        tokenizer.save(str(tokenizer_path))  # save tokenizer to path
