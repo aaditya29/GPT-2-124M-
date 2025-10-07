@@ -30,3 +30,6 @@ def get_or_build_tokenizer(config, ds, lang):
         tokenizer.train_from_iterator(
             get_all_sentences(ds, lang), trainer=trainer)
         tokenizer.save(str(tokenizer_path))  # save tokenizer to path
+    else:
+        tokenizer = Tokenizer.from_file(str(tokenizer_path))
+    return tokenizer
