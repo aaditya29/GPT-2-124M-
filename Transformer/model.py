@@ -328,3 +328,22 @@ def build_transformer(src_vocab_size: int, tgt_vocab_size: int, src_seq_len: int
         decoder_block = DecoderBlock(d_model, decoder_self_attention_block, decoder_cross_attention_block,
                                      feed_forward_block, dropout)  # adding the decoder block to the list
         decocer_blocks.append(decoder_block)  # creating the decoder
+
+    # creating the encoder and decoder
+    encoder = Encoder(d_model, nn.ModuleList(encoder_blocks))
+    decoder = Decoder(d_model, nn.ModuleList(decocer_blocks))
+
+    # creating the projection layer
+    projection_layer = ProjectionLayer(d_model, tgt_vocab_size)
+
+    # creating the transformer model
+    transformer = Transformer(
+        encoder, decoder, src_embed, tgt_embed, src_pos, tgt_pos, projection_layer)
+
+    # initialising the parameters of the model
+    for p in transformer.parameters():
+        if p.dim() > 1:
+            # Xavier uniform initialization for weights with more than 1 dimension
+            nn.init.xavier_uniform_(p)
+
+    return transformer
