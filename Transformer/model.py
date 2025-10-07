@@ -279,3 +279,52 @@ class Transformer(nn.Module):
     def project(self, x):
         # Project the decoder output to vocabulary size
         return self.projection_layer(x)
+
+
+"""
+Here we have a function to build the entire transformer model by creating the encoder and decoder blocks, multi-head attention blocks, feed-forward blocks, embeddings, positional encodings, and projection layer.
+1. src_vocab_size: Size of the source vocabulary
+2. tgt_vocab_size: Size of the target vocabulary
+3. src_seq_len: Maximum sequence length for the source
+4. tgt_seq_len: Maximum sequence length for the target
+5. d_model: Dimension of the model (default: 512)
+6. N: Number of layers in the encoder and decoder (default: 6)
+7. h: Number of heads in the multi-head attention (default: 8)
+8. dropout: Dropout rate (default: 0.1)
+9. d_ff: Dimension of the feed-forward network (default: 2048)
+"""
+
+
+def build_transformer(src_vocab_size: int, tgt_vocab_size: int, src_seq_len: int, tgt_seq_len: int, d_model: int = 512, N: int = 6, h: int = 8, dropout: float = 0.1, d_ff: int = 2048) -> Transformer:
+    # creating the embedding layers
+    src_embed = InputEmbeddings(d_model, src_vocab_size)
+    tgt_embed = InputEmbeddings(d_model, tgt_vocab_size)
+
+    # creating the positional encoding layers
+    src_pos = PositionalEncoding(d_model, src_seq_len, dropout)
+    tgt_pos = PositionalEncoding(d_model, tgt_seq_len, dropout)
+
+    # creating the encoder blocks
+    encoder_blocks = []
+
+    for _ in range(N):
+        encoder_self_attention_block = MultiHeadAttentionBlock(
+            d_model, h, dropout)  # creating the feed forward block
+        feed_forward_block = FeedForwardBlock(
+            d_model, d_ff, dropout)  # creating the encoder block
+        encoder_block = EncoderBlock(
+            d_model, encoder_self_attention_block, feed_forward_block, dropout)  # adding the encoder block to the list
+        encoder_blocks.append(encoder_block)  # creating the encoder
+
+    # creating the decoder blocks
+    decocer_blocks = []
+    for _ in range(N):
+        decoder_self_attention_block = MultiHeadAttentionBlock(
+            d_model, h, dropout)  # creating the feed forward block
+        decoder_cross_attention_block = MultiHeadAttentionBlock(
+            d_model, h, dropout)  # creating the feed forward block
+        feed_forward_block = FeedForwardBlock(
+            d_model, d_ff, dropout)  # creating the decoder block
+        decoder_block = DecoderBlock(d_model, decoder_self_attention_block, decoder_cross_attention_block,
+                                     feed_forward_block, dropout)  # adding the decoder block to the list
+        decocer_blocks.append(decoder_block)  # creating the decoder
