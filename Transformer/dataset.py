@@ -41,8 +41,67 @@ class BilingualDataset(Dataset):
         enc_num_padding_tokens = self.seq_len - \
             len(enc_input_tokens) - 2  # -2 for SOS and EOS tokens
         dec_num_padding_tokens = self.seq_len - \
-            len(dec_input_tokens) - 1  # -1 for EOS token
+            len(dec_input_tokens) - 1  # -1 for SOS token
 
         if enc_num_padding_tokens < 0 or dec_num_padding_tokens < 0:
             # making sure sentence is not too long
             raise ValueError("Sentence is too long")
+
+        # adding SOS and EOS tokens to encoder input
+        encoder_input = torch.cat(
+            [
+                self.sos_token,
+                torch.tensor(enc_input_tokens, dtype=torch.int64),
+                self.eos_token,
+                torch.tensor([self.pad_token] *
+                             enc_num_padding_tokens, dtype=torch.int64),
+            ],
+            dim=0,
+        )  # here we are concatenating the SOS token, input tokens, EOS token and padding tokens to form the final encoder input
+
+        # adding SOS token to decoder input
+        decoder_input = torch.cat(
+            [
+                self.sos_token,
+                torch.tensor(dec_input_tokens, dtype=torch.int64),
+                torch.tensor([self.pad_token] *
+                             dec_num_padding_tokens, dtype=torch.int64),
+            ],
+            dim=0,
+        )  # here we are concatenating the SOS token, input tokens and padding tokens to form the final decoder input
+
+        # adding label for what the model should predict
+        label = torch.cat(
+            [
+                torch.tensor(dec_input_tokens, dtype=torch.int64),
+                self.eos_token,
+                torch.tensor([self.pad_token] *
+                             dec_num_padding_tokens, dtype=torch.int64),
+            ],
+            dim=0,
+        )  # here we are concatenating the input tokens, EOS token and padding tokens to form the final label
+
+        # making sure encoder input is of seq_len length
+        assert encoder_input.shape[0] == self.seq_len
+        # making sure decoder input is of seq_len length
+        assert decoder_input.shape[0] == self.seq_len
+        # making sure label is of seq_len length
+        assert label.shape[0] == self.seq_len
+
+        return {
+            "encoder_input": encoder_input,
+            "decoder_input": decoder_input,
+            "label": label,
+            # (1, 1, seq_len)
+            "encoder_mask": (encoder_input != self.pad_token).unsqueeze(0).unsqueeze(0).int(),
+            # (1, seq_len) & (1, seq_len, seq_len),
+            "decoder_mask": (decoder_input != self.pad_token).unsqueeze(0).int() & causal_mask(decoder_input.size(0)),
+            "src_text": src_text,
+            "tgt_text": tgt_text,
+        }
+
+
+def causal_mask(size):
+    # upper triangular matrix with ones above the main diagonal will be 1 and 0 elsewhere
+    mask = torch.triu(torch.ones((1, size, size)), diagonal=1).type(torch.int)
+    return mask == 0  # mask will be True where mask is 0 and False where mask is 1
