@@ -4,6 +4,7 @@ from torch.utils.data import Dataset, DataLoader, random_split
 
 # for creating causal mask and dataset class
 from dataset import BilingualDataset, causal_mask
+from model import build_transformer
 
 
 from tokenizers import Tokenizer  # for custom tokenizer
@@ -83,3 +84,12 @@ def get_ds(config):
     val_dataloader = DataLoader(val_ds, batch_size=1, shuffle=True)
 
     return train_dataloader, val_dataloader, tokenizer_src, tokenizer_tgt
+
+
+def get_model(config, vocab_src_len, vocab_tgt_len):
+    # here we are building the transformer model using the build_transformer function from model.py
+    # we are passing the vocab size of source and target languages, sequence length and d_model as parameters to the function
+    # and returning the model
+    model = build_transformer(vocab_src_len, vocab_tgt_len,
+                              config["seq_len"], config['seq_len'], d_model=config['d_model'])
+    return model
