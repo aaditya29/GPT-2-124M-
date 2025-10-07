@@ -1,5 +1,7 @@
 import torch
 import torch.nn as nn
+from torch.utils.data import Dataset, DataLoader, random_split
+
 
 from tokenizers import Tokenizer  # for custom tokenizer
 from datasets import load_dataset  # for loading datasets
@@ -33,3 +35,19 @@ def get_or_build_tokenizer(config, ds, lang):
     else:
         tokenizer = Tokenizer.from_file(str(tokenizer_path))
     return tokenizer
+
+
+def get_ds(config):
+    ds_raw = load_dataset(
+        f"{config['datasource']}", f"{config['lang_src']}-{config['lang_tgt']}", split='train')
+
+    # building tokenizers for source and target languages
+    tokenizer_src = get_or_build_tokenizer(config, ds_raw, config['lang_src'])
+    tokenizer_tgt = get_or_build_tokenizer(config, ds_raw, config['lang_tgt'])
+
+    # 90% train, 10% val split
+    # where ds_raw is the entire dataset
+    train_ds_size = int(0.9 * len(ds_raw))
+    val_ds_size = len(ds_raw) - train_ds_size
+    train_ds_raw, val_ds_raw = random_split(
+        ds_raw, [train_ds_size, val_ds_size])
