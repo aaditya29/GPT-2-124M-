@@ -3,7 +3,7 @@ import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader, random_split
 
 # for creating causal mask and dataset class
-from dataset import BilingualDataset, causal_mask, latest_weights_file_path, get_weights_file_path
+from dataset import BilingualDataset, causal_mask, latest_weights_file_path, get_weights_file_path, get_config
 from model import build_transformer
 
 
@@ -67,6 +67,94 @@ def greedy_decode(model, source, source_mask, tokenizer_src, tokenizer_tgt, max_
             break
 
     return decoder_input.squeeze(0)
+
+
+"""
+Here we are building the function to run validation on the validation dataset after every epoch during training.
+model - trained transformer model
+validation_ds - validation dataset dataloader
+tokenizer_src - tokenizer for source language
+tokenizer_tgt - tokenizer for target language
+max_len - maximum length of the target sentence to be generated
+device - device to run the model on (cpu or gpu)
+print_msg - function to print messages to the console
+global_step - current global step of the training
+writer - tensorboard writer to log metrics
+num_examples - number of examples to run validation on
+"""
+
+
+def run_validation(model, validation_ds, tokenizer_src, tokenizer_tgt, max_len, device, print_msg, global_step, writer, num_examples=2):
+    model.eval()  # set the model to evaluation mode
+    count = 0  # counter for number of examples processed
+
+    source_texts = []
+    expected = []
+    predicted = []
+
+    try:
+        # get the console window width
+        with os.popen('stty size', 'r') as console:
+            _, console_width = console.read().split()
+            console_width = int(console_width)
+    except:
+        # If we can't get the console width, use 80 as default
+        console_width = 80
+
+    with torch.no_grad():
+        for batch in validation_ds:
+            count += 1  # increment the counter
+            encoder_input = batch["encoder_input"].to(device)  # (b, seq_len)
+            encoder_mask = batch["encoder_mask"].to(
+                device)  # (b, 1, 1, seq_len)
+
+            # check that the batch size is 1
+            assert encoder_input.size(
+                0) == 1, "Batch size must be 1 for validation"  # because we are generating one sentence at a time
+
+            model_out = greedy_decode(
+                model, encoder_input, encoder_mask, tokenizer_src, tokenizer_tgt, max_len, device)  # get the model output using greedy decoding
+
+            source_text = batch["src_text"][0]  # get the source text
+            target_text = batch["tgt_text"][0]  # get the target text
+            model_out_text = tokenizer_tgt.decode(
+                model_out.detach().cpu().numpy())  # decode the model output to get the predicted text
+
+            # append the source text to the list
+            source_texts.append(source_text)
+            expected.append(target_text)  # append the target text to the list
+            # append the predicted text to the list
+            predicted.append(model_out_text)
+
+            # Print the source, target and model output
+            print_msg('-'*console_width)
+            print_msg(f"{f'SOURCE: ':>12}{source_text}")
+            print_msg(f"{f'TARGET: ':>12}{target_text}")
+            print_msg(f"{f'PREDICTED: ':>12}{model_out_text}")
+
+            if count == num_examples:
+                print_msg('-'*console_width)
+                break
+
+    if writer:
+        # Evaluate the character error rate
+        # Compute the char error rate
+        metric = torchmetrics.CharErrorRate()
+        cer = metric(predicted, expected)
+        writer.add_scalar('validation cer', cer, global_step)
+        writer.flush()
+
+        # Compute the word error rate
+        metric = torchmetrics.WordErrorRate()
+        wer = metric(predicted, expected)
+        writer.add_scalar('validation wer', wer, global_step)
+        writer.flush()
+
+        # Compute the BLEU metric
+        metric = torchmetrics.BLEUScore()
+        bleu = metric(predicted, expected)
+        writer.add_scalar('validation BLEU', bleu, global_step)
+        writer.flush()
 
 
 def get_all_sentences(ds, lang):
@@ -147,7 +235,6 @@ def get_model(config, vocab_src_len, vocab_tgt_len):
     return model
 
 
-"""
 def train_model(config):
     device = "cuda" if torch.cuda.is_available(
     ) else "mps" if torch.has_mps or torch.backends.mps.is_available() else "cpu"
@@ -238,4 +325,9 @@ def train_model(config):
             'optimizer_state_dict': optimizer.state_dict(),
             'global_step': global_step
         }, model_filename)
-"""
+
+
+if __name__ == '__main__':
+    warnings.filterwarnings("ignore")
+    config = get_config()
+    train_model(config)
